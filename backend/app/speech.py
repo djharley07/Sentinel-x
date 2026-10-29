@@ -1,17 +1,19 @@
 from time import perf_counter
+from typing import Annotated
+from uuid import UUID
 
 import logging
 
 import psycopg
 
-from app.report_store import save_transcription
+from app.report_store import ReplacementError, check_replacement, save_transcription
 logger = logging.getLogger(__name__)
 import os
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
@@ -30,7 +32,10 @@ AUDIO_TYPES = {
 
 
 @router.post("/transcribe")
-def transcribe_audio(audio: UploadFile):
+def transcribe_audio(
+    audio: UploadFile,
+    replaces_attempt_id: Annotated[UUID | None, Form()] = None,
+):
     """Transcribe a short recording. The result still needs user review."""
     extension = Path(audio.filename or "").suffix.lower()
     if extension not in AUDIO_TYPES:
@@ -56,6 +61,18 @@ def transcribe_audio(audio: UploadFile):
             status_code=503,
             detail="The backend is missing its Gnani API key.",
         )
+    if replaces_attempt_id is not None:
+        try:
+            check_replacement(replaces_attempt_id)
+        except ReplacementError as error:
+            raise HTTPException(error.status_code, detail=error.detail) from None
+        except (psycopg.Error, OSError, RuntimeError, ValueError) as error:
+            logger.error("Replacement check failed: %s", type(error).__name__)
+            raise HTTPException(
+                status_code=503,
+                detail="Could not check the previous attempt. No recording was sent to Gnani.",
+            ) from None
+
     gnani_started = perf_counter()
     try:
         response = requests.post(
@@ -147,7 +164,10 @@ def transcribe_audio(audio: UploadFile):
             model=model,
             language=language,
             provider_request_id=request_id,
+            replaces_attempt_id=replaces_attempt_id,
         )
+    except ReplacementError as error:
+        raise HTTPException(error.status_code, detail=error.detail) from None
     except (psycopg.Error, OSError, RuntimeError, ValueError) as error:
         # Log the error type without exposing credentials or report content.
         logger.error("Report persistence failed: %s", type(error).__name__)
