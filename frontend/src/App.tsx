@@ -1,4 +1,4 @@
-import ReportHistory from './ReportHistory'
+import ReportHistory, { isHistoryReport } from './ReportHistory'
 
 import { useRef, useState } from 'react'
 import './index.css'
@@ -69,10 +69,59 @@ export default function App() {
   const [conflict, setConflict] = useState(false)
   const [uploadUncertain, setUploadUncertain] = useState(false)
   const [inputKey, setInputKey] = useState(0)
+  const [resumeBusy, setResumeBusy] = useState(false)
+  const [resumeError, setResumeError] = useState('')
+  const [resumed, setResumed] = useState(false)
+  const [historyVersion, setHistoryVersion] = useState(0)
   const inFlight = useRef(false)
+  const resumeDisabled = busy || reviewBusy || resumeBusy || uploadUncertain ||
+    pending !== null || conflict || result !== null || file !== null
 
   const replacing = result !== null && review?.decision === 'rerecord_requested'
-  const uploadLocked = busy || reviewBusy || uploadUncertain || (result !== null && !replacing)
+  const uploadLocked = busy || reviewBusy || resumeBusy || uploadUncertain || (result !== null && !replacing)
+
+  async function resumeReview(reportId: string, attemptId: string) {
+    if (resumeDisabled || inFlight.current) return
+    inFlight.current = true
+    setResumeBusy(true)
+    setResumeError('')
+    try {
+      // Read again instead of trusting a potentially stale history card.
+      const response = await fetch(`/api/reports/${reportId}`, {
+        signal: AbortSignal.timeout(30000), cache: 'no-store',
+      })
+      const data: unknown = await response.json()
+      if (!response.ok) throw new Error(detail(data, response.status))
+      if (!isHistoryReport(data, reportId)) throw new Error('The server returned an unexpected report response.')
+      const latest = data.attempts[data.attempts.length - 1]
+      if (!latest || latest.attempt_id !== attemptId || latest.verification_status !== 'pending') {
+        throw new Error('This attempt is no longer the latest pending review. Refresh reports to see its current status.')
+      }
+      const restored = {
+        report_id: data.report_id, attempt_id: latest.attempt_id,
+        attempt_number: latest.attempt_number, transcript: latest.original_transcript,
+        model: latest.model, detected_language_code: latest.detected_language_code,
+        request_id: latest.request_id, verification_status: 'pending', persistence_status: 'saved',
+      }
+      if (!isTranscription(restored)) throw new Error('The saved transcript could not be loaded for review.')
+      setResult(restored)
+      setDraft(restored.transcript)
+      setReview(null)
+      setPending(null)
+      setEditing(false)
+      setConflict(false)
+      setError('')
+      setReviewError('')
+      setResumed(true)
+      document.getElementById('transcript-heading')?.focus()
+      document.getElementById('transcript-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } catch (caught) {
+      setResumeError(caught instanceof Error ? caught.message : 'Could not open the saved review. Try again.')
+    } finally {
+      inFlight.current = false
+      setResumeBusy(false)
+    }
+  }
 
   async function transcribe() {
     if (!file || uploadLocked || inFlight.current) return
@@ -104,6 +153,8 @@ export default function App() {
         data.attempt_number !== result.attempt_number + 1
       )) throw new Error('Unexpected replacement response')
       setResult(data)
+      setResumed(false)
+      setHistoryVersion((version) => version + 1)
       setDraft(data.transcript)
       setReview(null)
       setPending(null)
@@ -151,6 +202,7 @@ export default function App() {
       }
       if (!isReview(data, result, payload)) throw new Error('Unexpected review response')
       setReview(data)
+      setHistoryVersion((version) => version + 1)
       if (data.decision === 'rerecord_requested') {
         // Require an explicit file selection for the next attempt.
         setFile(null)
@@ -170,6 +222,8 @@ export default function App() {
   function startNewReport() {
     if (inFlight.current || !review || review.decision === 'rerecord_requested') return
     setFile(null)
+    setResumed(false)
+    setResumeError('')
     setResult(null)
     setReview(null)
     setDraft('')
@@ -204,9 +258,13 @@ export default function App() {
             <input key={inputKey} id="audio-file" type="file"
               accept=".wav,.mp3,.m4a,.ogg,.flac,.aac"
               disabled={uploadLocked}
-              onChange={(event) => { setFile(event.target.files?.[0] ?? null); setError('') }} />
+              onChange={(event) => { setFile(event.target.files?.[0] ?? null); setError(''); setResumeError('') }} />
           </label>
           <p className="hint">WAV, MP3, M4A, OGG, FLAC or AAC</p>
+          {file && !result && !busy && !resumeBusy && !uploadUncertain && <button className="secondary"
+            onClick={() => { setFile(null); setInputKey((key) => key + 1); setError('') }}>
+            Clear selected recording
+          </button>}
           <button disabled={!file || uploadLocked} onClick={transcribe}>
             {busy ? 'Transcribing and saving…' : replacing ? 'Transcribe replacement' : 'Transcribe recording'}
           </button>
@@ -215,13 +273,13 @@ export default function App() {
           {error && <p className="error" role="alert">{error}</p>}
           {result && <p className="hint">{replacing
             ? `The next recording will be attempt ${result.attempt_number + 1} of this same report. Keep this page open during replacement.`
-            : 'Recording submitted. Review its transcript on the right.'}</p>}
+            : resumed ? 'Saved transcript reopened. No audio was sent to Gnani.' : 'Recording submitted. Review its transcript on the right.'}</p>}
           {review && review.decision !== 'rerecord_requested' &&
             <button className="secondary" onClick={startNewReport}>Start a new report</button>}
         </section>
         <section className="card" aria-labelledby="transcript-heading" aria-busy={busy || reviewBusy}>
           <p className="eyebrow">02 / TRANSCRIPT</p>
-          <h2 id="transcript-heading">What the system heard</h2>
+          <h2 id="transcript-heading" tabIndex={-1}>What the system heard</h2>
           {result ? <>
             <span className={`review ${review ? 'saved' : ''}`}>
               {review ? (review.decision === 'rerecord_requested' ? 'Re-record requested' : 'Review saved') : 'Review required'}
@@ -264,8 +322,10 @@ export default function App() {
           </> : <p className="empty">Your transcription will appear here after processing.</p>}
         </section>
       </div>
-            <ReportHistory />
-      <footer>Local demo · Reports and reviews are saved to the database · Recordings stay on this laptop · Saved reports available below</footer>
+      {resumeError && <p className="error" role="alert">{resumeError}</p>}
+      <ReportHistory key={historyVersion} onResume={resumeReview}
+        resumeDisabled={resumeDisabled} resuming={resumeBusy} />
+      <footer>Local demo · Reports and reviews are saved to the database · Recordings stay on this laptop · Saved reports and attempt history available</footer>
     </main>
   )
 }

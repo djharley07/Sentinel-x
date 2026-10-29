@@ -18,6 +18,7 @@ type Attempt = {
   created_at: string
   original_transcript: string
   model: string
+  request_id: string | null
   detected_language_code: string | null
   verification_status: Status
   decision: Exclude<Status, 'pending'> | null
@@ -55,7 +56,7 @@ function isPage(v: unknown, offset: number): v is Page {
 function isAttempt(v: unknown): v is Attempt {
   if (!object(v) || !id(v.attempt_id) || !integer(v.attempt_number) || v.attempt_number < 1 ||
     !date(v.created_at) || typeof v.original_transcript !== 'string' || typeof v.model !== 'string' ||
-    !nullableText(v.detected_language_code) || !status(v.verification_status) ||
+    !nullableText(v.request_id) || !nullableText(v.detected_language_code) || !status(v.verification_status) ||
     !nullableText(v.corrected_transcript) || !nullableText(v.verified_transcript) ||
     !(v.reviewed_at === null || date(v.reviewed_at))) return false
   if (v.verification_status === 'pending') return v.decision === null &&
@@ -66,7 +67,7 @@ function isAttempt(v: unknown): v is Attempt {
     v.corrected_transcript.trim().length > 0 && v.verified_transcript === v.corrected_transcript
   return v.verified_transcript === null && v.corrected_transcript === null
 }
-function isReport(v: unknown, reportId: string): v is Report {
+export function isHistoryReport(v: unknown, reportId: string): v is Report {
   if (!object(v) || v.report_id !== reportId || !date(v.created_at) ||
     !Array.isArray(v.attempts) || !v.attempts.every(isAttempt)) return false
   const attempts: Attempt[] = v.attempts
@@ -78,7 +79,13 @@ function message(data: unknown, code: number) {
 }
 function when(value: string) { return new Date(value).toLocaleString() }
 
-export default function ReportHistory() {
+type Props = {
+  onResume: (reportId: string, attemptId: string) => Promise<void>
+  resumeDisabled: boolean
+  resuming: boolean
+}
+
+export default function ReportHistory({ onResume, resumeDisabled, resuming }: Props) {
   const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -137,7 +144,7 @@ export default function ReportHistory() {
       const response = await fetch(`/api/reports/${reportId}`, { signal: request.signal, cache: 'no-store' })
       const data: unknown = await response.json()
       if (!response.ok) throw new Error(message(data, response.status))
-      if (!isReport(data, reportId)) throw new Error('The server returned an unexpected report response.')
+      if (!isHistoryReport(data, reportId)) throw new Error('The server returned an unexpected report response.')
       if (detailRequest.current === request && !request.signal.aborted) setReport(data)
     } catch (caught) {
       if (detailRequest.current === request) setDetailError(request.signal.aborted
@@ -157,7 +164,7 @@ export default function ReportHistory() {
           {loading ? 'Loading…' : page ? 'Refresh reports' : 'Load saved reports'}
         </button>
       </div>
-      <p className="hint">Read-only history for this demo factory. Loading reports does not send audio to Gnani. Refresh the list after saving new work.</p>
+      <p className="hint">Saved history for this demo factory. Resume the latest pending attempt to review it. Loading reports does not send audio to Gnani. Refresh the list after saving new work.</p>
       {loading && <p role="status">Loading saved reports…</p>}
       {error && <p className="error" role="alert">{error} {page && 'The list below is from the previous successful load.'}</p>}
       {page && <>
@@ -204,6 +211,13 @@ export default function ReportHistory() {
                   <h5>{attempt.decision === 'corrected' ? 'Corrected transcript' : 'Accepted transcript'}</h5>
                   <p className="history-text">{attempt.verified_transcript}</p>
                 </> : <p className="hint">{attempt.decision === 'rerecord_requested' ? 'A new recording was requested. This attempt was not verified.' : 'This attempt is awaiting review.'}</p>}
+                {index === report.attempts.length - 1 && attempt.verification_status === 'pending' && <>
+                  <button disabled={resumeDisabled || loading || detailLoading}
+                    onClick={() => onResume(report.report_id, attempt.attempt_id)}>
+                    {resuming ? 'Opening review…' : 'Resume review'}
+                  </button>
+                  {resumeDisabled && !resuming && <p className="hint">Resume is available when the recording workspace is empty. Finish the active report or clear a selected recording first.</p>}
+                </>}
                 {attempt.reviewed_at && <p className="hint">Reviewed {when(attempt.reviewed_at)}</p>}
               </article>)}
             </>}
