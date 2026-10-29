@@ -1,3 +1,5 @@
+import ReportHistory from './ReportHistory'
+
 import { useRef, useState } from 'react'
 import './index.css'
 
@@ -262,7 +264,8 @@ export default function App() {
           </> : <p className="empty">Your transcription will appear here after processing.</p>}
         </section>
       </div>
-      <footer>Local demo · Reports and reviews are saved to the database · Recordings stay on this laptop · History view coming next</footer>
+            <ReportHistory />
+      <footer>Local demo · Reports and reviews are saved to the database · Recordings stay on this laptop · Saved reports available below</footer>
     </main>
   )
 }
