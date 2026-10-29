@@ -12,6 +12,7 @@ type Transcription = {
   persistence_status: 'saved'
   report_id: string
   attempt_id: string
+  attempt_number: number
 }
 type Review = {
   review_id: string
@@ -33,6 +34,7 @@ const uuid = (value: unknown): value is string =>
 function isTranscription(value: unknown): value is Transcription {
   return record(value) && typeof value.transcript === 'string' &&
     value.transcript.trim().length > 0 && uuid(value.report_id) && uuid(value.attempt_id) &&
+    typeof value.attempt_number === 'number' && Number.isSafeInteger(value.attempt_number) && value.attempt_number > 0 &&
     value.verification_status === 'pending' && value.persistence_status === 'saved' &&
     optionalText(value.model) && optionalText(value.detected_language_code) && optionalText(value.request_id)
 }
@@ -67,8 +69,11 @@ export default function App() {
   const [inputKey, setInputKey] = useState(0)
   const inFlight = useRef(false)
 
+  const replacing = result !== null && review?.decision === 'rerecord_requested'
+  const uploadLocked = busy || reviewBusy || uploadUncertain || (result !== null && !replacing)
+
   async function transcribe() {
-    if (!file || result || uploadUncertain || inFlight.current) return
+    if (!file || uploadLocked || inFlight.current) return
     setError('')
     if (file.size === 0 || file.size > 10 * 1024 * 1024) {
       setError('Choose a non-empty audio file no larger than 10 MiB.')
@@ -78,6 +83,7 @@ export default function App() {
     setBusy(true)
     const form = new FormData()
     form.append('audio', file)
+    if (replacing && result) form.append('replaces_attempt_id', result.attempt_id)
     try {
       const response = await fetch('/api/speech/transcribe', {
         method: 'POST', body: form, signal: AbortSignal.timeout(180000),
@@ -90,8 +96,18 @@ export default function App() {
         return
       }
       if (!isTranscription(data)) throw new Error('Unexpected response')
+      if (replacing && result && (
+        data.report_id !== result.report_id ||
+        data.attempt_id === result.attempt_id ||
+        data.attempt_number !== result.attempt_number + 1
+      )) throw new Error('Unexpected replacement response')
       setResult(data)
       setDraft(data.transcript)
+      setReview(null)
+      setPending(null)
+      setEditing(false)
+      setConflict(false)
+      setReviewError('')
     } catch {
       setUploadUncertain(true)
       setError('Could not confirm the result. The report may still have been saved. Check the backend and database before uploading again.')
@@ -133,6 +149,12 @@ export default function App() {
       }
       if (!isReview(data, result, payload)) throw new Error('Unexpected review response')
       setReview(data)
+      if (data.decision === 'rerecord_requested') {
+        // Require an explicit file selection for the next attempt.
+        setFile(null)
+        setInputKey((key) => key + 1)
+        setError('')
+      }
       setPending(null)
       setEditing(false)
     } catch {
@@ -153,6 +175,7 @@ export default function App() {
     setPending(null)
     setConflict(false)
     setError('')
+    setUploadUncertain(false)
     setReviewError('')
     setInputKey((key) => key + 1)
   }
@@ -172,23 +195,25 @@ export default function App() {
       <div className="columns">
         <section className="card" aria-labelledby="upload-heading">
           <p className="eyebrow">01 / RECORDING</p>
-          <h2 id="upload-heading">Upload your report</h2>
+          <h2 id="upload-heading">{replacing ? 'Upload a replacement' : 'Upload your report'}</h2>
           <p>Use a recording under 30 seconds, up to 10 MiB.</p>
           <label className="upload" htmlFor="audio-file">
-            <span>Choose an audio recording</span>
+            <span>{replacing ? 'Choose a replacement recording' : 'Choose an audio recording'}</span>
             <input key={inputKey} id="audio-file" type="file"
               accept=".wav,.mp3,.m4a,.ogg,.flac,.aac"
-              disabled={busy || result !== null || uploadUncertain}
+              disabled={uploadLocked}
               onChange={(event) => { setFile(event.target.files?.[0] ?? null); setError('') }} />
           </label>
           <p className="hint">WAV, MP3, M4A, OGG, FLAC or AAC</p>
-          <button disabled={!file || busy || result !== null || uploadUncertain} onClick={transcribe}>
-            {busy ? 'Transcribing and saving…' : 'Transcribe recording'}
+          <button disabled={!file || uploadLocked} onClick={transcribe}>
+            {busy ? 'Transcribing and saving…' : replacing ? 'Transcribe replacement' : 'Transcribe recording'}
           </button>
           <p className="hint">Clicking transcribe sends this recording to Gnani AI.</p>
           {busy && <p role="status">Waiting for the transcription and saved report…</p>}
           {error && <p className="error" role="alert">{error}</p>}
-          {result && <p className="hint">Recording submitted. Review its transcript on the right.</p>}
+          {result && <p className="hint">{replacing
+            ? `The next recording will be attempt ${result.attempt_number + 1} of this same report. Keep this page open during replacement.`
+            : 'Recording submitted. Review its transcript on the right.'}</p>}
           {review && review.decision !== 'rerecord_requested' &&
             <button className="secondary" onClick={startNewReport}>Start a new report</button>}
         </section>
@@ -204,12 +229,13 @@ export default function App() {
               <dt>Model</dt><dd>{result.model ?? 'Not returned'}</dd>
               <dt>Detected language</dt><dd>{result.detected_language_code ?? 'Not returned'}</dd>
               <dt>Report ID</dt><dd>{result.report_id}</dd>
+              <dt>Attempt</dt><dd>{result.attempt_number}</dd>
             </dl>
             {review ? <div className="review-result" role="status">
               {review.decision === 'rerecord_requested' ? <>
                 <h3>New recording requested</h3>
                 <p>This transcript has not been verified. Its original text and recording are preserved.</p>
-                <p className="hint">Uploading a replacement for this report is coming next.</p>
+                <p className="hint">Choose a replacement recording on the left, then click Transcribe replacement. Earlier attempts remain saved.</p>
               </> : <>
                 <h3>{review.decision === 'corrected' ? 'Corrected transcript' : 'Accepted transcript'}</h3>
                 <p className="verified-text">{review.verified_transcript}</p>
