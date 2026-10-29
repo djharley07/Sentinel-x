@@ -1,3 +1,5 @@
+from app.reviews import router as reviews_router
+
 from fastapi import FastAPI
 
 from app.speech import router as speech_router
@@ -9,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(speech_router)
+app.include_router(reviews_router)
 
 
 @app.get("/health", tags=["System"])
