@@ -45,3 +45,14 @@ footer { color: #a9b7ce; font-size: 12px; padding: 28px 0; }
   .card { padding: 22px; }
   .badge { font-size: 9px; }
 }
+/* Transcript review controls */
+.secondary { background: transparent; color: #d4dfef; border: 1px solid #59708f; }
+.review.saved { background: #163d35; color: #8af2d5; }
+.editor { margin-top: 22px; }
+.editor label { display: block; font-weight: 600; margin-bottom: 10px; }
+textarea { width: 100%; min-height: 150px; resize: vertical; font: inherit; line-height: 1.6; padding: 12px; border: 1px solid #59708f; border-radius: 9px; color: #e8edf5; background: #0b1019; }
+textarea:focus-visible { outline: 3px solid #a9c8ff; outline-offset: 4px; }
+textarea:disabled { opacity: 0.65; }
+.review-result { border-top: 1px solid #29364a; margin-top: 22px; padding-top: 12px; }
+.review-result h3 { font-size: 17px; color: #8af2d5; }
+.verified-text { color: #e8edf5; white-space: pre-wrap; overflow-wrap: anywhere; }
