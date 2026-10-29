@@ -1,3 +1,5 @@
+from app.history import router as history_router
+
 from app.reviews import router as reviews_router
 
 from fastapi import FastAPI
@@ -12,6 +14,7 @@ app = FastAPI(
 
 app.include_router(speech_router)
 app.include_router(reviews_router)
+app.include_router(history_router)
 
 
 @app.get("/health", tags=["System"])
