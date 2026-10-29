@@ -50,10 +50,10 @@ export default function App() {
       const response = await fetch('/api/speech/transcribe', {
         method: 'POST',
         body: form,
-        signal: AbortSignal.timeout(90000),
+        signal: AbortSignal.timeout(180000),
       })
 
-      const data: unknown = await response.json().catch(() => null)
+      const data: unknown = await response.json()
 
       if (!response.ok) {
         const detail =
@@ -72,13 +72,23 @@ export default function App() {
         throw new Error('The server returned an unexpected response.')
       }
 
-      setResult(data)
+            setResult(data)
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Transcription failed. Check that the backend is running.',
-      )
+      if (
+        caught instanceof Error &&
+        (caught.name === 'TimeoutError' || caught.name === 'AbortError')
+      ) {
+        setError(
+          'The browser stopped waiting. Your report may still have been saved. ' +
+          'Check the backend and database before uploading again.',
+        )
+      } else {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : 'Could not receive the result. Check the backend before uploading again.',
+        )
+      }
     } finally {
       setBusy(false)
     }
@@ -163,9 +173,9 @@ export default function App() {
         </section>
       </div>
 
-      <footer>
-        Development preview · Reports are not saved yet ·
-        Refreshing clears this screen
+            <footer>
+        Local demo · Successful transcriptions are saved to the database ·
+        Recordings stay on this laptop · History view coming next
       </footer>
     </main>
   )
