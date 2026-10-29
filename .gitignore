@@ -1,0 +1,22 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# Local test uploads and generated results
+demo-assets/local/
+test-results/
+playwright-report/
+
+# Logs
+*.log
