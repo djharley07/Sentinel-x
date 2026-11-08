@@ -1,0 +1,11 @@
+.machine-references { max-width:1000px;margin:auto; }
+.machine-references label { display:block;margin-top:14px; }
+.machine-references select,.machine-references input:not([type=checkbox]),.machine-references textarea { display:block;width:100%;box-sizing:border-box;margin:8px 0; }
+.machine-references fieldset { border:0;padding:0;min-width:0; }
+.machine-references li { margin:18px 0; }
+.reference-review { padding:18px;border:1px solid #52647e;border-radius:10px;margin:22px 0; }
+.reference-review pre { white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;max-height:480px;overflow:auto; }
+.machine-references .reference-check { display:flex;gap:10px;align-items:center; }
+.reference-check input { width:22px;height:22px;flex:0 0 22px; }
+
+.machine-references select,.machine-references input:not([type=checkbox]),.machine-references textarea { background:#0b121c;color:#e8edf5;border:1px solid #64748b;border-radius:6px;padding:10px;font:inherit; }

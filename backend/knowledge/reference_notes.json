@@ -1,0 +1,224 @@
+{
+  "version": "1.8",
+  "title": "SENTINEL X project guide and fictional demo notes",
+  "sources": [
+    {
+      "id": "reporting",
+      "title": "Upload and verify a voice report",
+      "text": "In Worker reporting, upload a recording under 30 seconds and up to 10 MiB. Transcribe recording sends it to Gnani Prisma and saves a report awaiting review. Check the equipment identity, symptoms, numbers, temperature, units and negation against your recording. Accept the transcript if it is correct, edit it if needed, or request a replacement recording. Confirming the transcript confirms the words you reported; it does not confirm a diagnosis or machine safety.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "equipment-check",
+      "title": "Equipment-name suggestions",
+      "text": "Equipment suggestions compare similar Latin spellings with the machines available to your account. An owner uses the factory machine list; a worker uses current assignments. For example, Motu fifteen may suggest Motor 15. Use the suggestion to update your draft, edit it yourself, or acknowledge keeping your wording. The check does not add missing numbers or verify the recording. No warning does not prove the transcript is correct.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "readback",
+      "title": "Listen before confirming",
+      "text": "Expand Listen before confirming to hear your current draft through Gnani Timbre. Choose the language of the existing text and generate audio, then press Play. Replaying that generated clip makes no additional speech request. Changing the draft clears its earlier audio. The synthesized voice reads the text; it does not check that it matches the original recording. Read-back currently supports up to 1,500 characters. Selecting a language does not translate the text.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "corrections",
+      "title": "Correct a saved transcript",
+      "text": "Open Report history, load a report, and select its latest accepted or corrected version. Choose Correct this saved transcript, enter the corrected words and a reason, complete the equipment check, and save a new corrected version. Earlier transcripts, the recording, author and correction history remain available. No new recording is needed. Earlier facts, evidence, escalations and repair work stay attached to their earlier source version; review facts again for the new version.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "fact-review",
+      "title": "Review structured maintenance facts",
+      "text": "After the transcript is confirmed, the reasoning model can prepare structured facts: equipment label, reported issue, temperature value and unit, and when the issue started. These are a draft. Compare them with the verified transcript, correct mistakes and leave unknown facts blank. Select a matching available machine only if you can identify it; otherwise leave it unlinked for owner review. Saving facts records reported observations and does not certify machine safety.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "redline",
+      "title": "What REDLINE means",
+      "text": "REDLINE is a manual, in-app escalation workflow for a report in this demo. A submitting worker or owner can open or reopen an escalation. The owner can acknowledge it and record its resolution. Open and acknowledged states remain active. Completing technician work does not automatically resolve REDLINE. Resolving REDLINE records an administrative decision; it does not certify that a machine is safe. This version does not automatically detect critical faults or send external emergency alerts. The owner sees an in-app REDLINE banner and inbox. Both open and acknowledged cases count as active. Each case is tied to a reviewed report version; later transcript corrections do not close an earlier case. The owner can filter cases, inspect source transcripts and reviewed facts, acknowledge and resolve a case with a note, and reopen a resolved case. Counts refresh every minute while the browser tab is visible and show the last successful check time. A failed refresh means current status is unknown; previously shown counts may be stale. These checks are not real-time external alerts.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "evidence",
+      "title": "What Evidence Detective does",
+      "text": "Evidence Detective currently supports human review of a photo against a specific claim. Choose a photo, label its source, state the claim, describe what is visible and record whether the evidence supports, conflicts with, or cannot verify the claim. Online demo photos are not verified photos of the factory. A photo cannot establish every property, such as an unusual sound. No AI image analysis runs in this version.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "memory",
+      "title": "What Operational Memory does",
+      "text": "Operational Memory shows related earlier reviewed reports for the currently linked machine and recorded work summaries. Wording similarity suggests reports to inspect; it does not establish the same underlying fault, a diagnosis or a successful repair. Check the original report and work notes before drawing a conclusion.",
+      "kind": "project_guide",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "id": "staffing",
+      "title": "Assign machines to workers",
+      "text": "The owner uses Worker machines to select a worker and assign a factory machine with a note. Removing an assignment ends the current assignment while preserving its history. Workers can view their own assigned machines and select them when reviewing facts for a new report. Leaving a report unlinked remains possible. A worker machine assignment is separate from assigning technician repair work.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker"
+      ]
+    },
+    {
+      "id": "repair-workflow",
+      "title": "Technician work and reported outcomes",
+      "text": "The owner assigns report work to a technician. The assigned technician can record work in progress and work completed, with an action note and a reported outcome: resolved, improved, unresolved or not checked. Work audit history preserves earlier updates. Completed is a workflow status. A reported outcome is not independently verified and work completion does not automatically close REDLINE.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "accounts",
+      "title": "Account access and passwords",
+      "text": "The owner creates worker and technician accounts and can reset their passwords or enable and disable access in Accounts. Owner accounts are protected from these controls. Every signed-in user, including the owner, can change their own password in My account using their current password. Show/Hide reveals only the password currently being entered. Saved passwords cannot be viewed. Account access changes and password resets end relevant sessions. Users must sign in again after changing their own password.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "analytics",
+      "title": "Understand maintenance analytics",
+      "text": "Maintenance analytics is an owner view of saved reports, human-reviewed facts, current machine links, repeated issue wording and the latest recorded work for each reviewed report. It uses one latest human fact review per report rather than counting every attempt or audit event. Repeated wording is a prompt to investigate, not proof of the same fault. Reporting an issue does not mean the submitter caused it. After a transcript correction, earlier reviewed facts remain counted until newer facts are reviewed.",
+      "kind": "project_guide",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "id": "demo-motor",
+      "title": "Demo learning note: what a motor does",
+      "text": "An electric motor converts electrical energy into mechanical motion. In a rotating motor, the stationary part is called the stator and the rotating part is called the rotor. A shaft transfers rotation to connected equipment. Motor 15 is a fictional Production machine in this demo. Its manufacturer, motor type, rated operating limits and approved repair procedure are not provided. This note explains the concept and cannot determine its condition or authorize a repair.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "demo-pump",
+      "title": "Demo learning note: what a pump does",
+      "text": "A pump moves fluid by adding energy to it, creating flow through a system. The inlet is where fluid enters and the outlet is where it leaves. Pump 7 is a fictional Utilities machine in this demo. Its pump type, fluid, operating limits and maintenance procedure are not provided. A report saying not leaking must retain that negation; it is different from reporting a leak. This note cannot diagnose the pump or provide its repair procedure.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "demo-compressor",
+      "title": "Demo learning note: what a compressor does",
+      "text": "A compressor raises the pressure of a gas using mechanical energy. Compressor 3 is a fictional Utilities machine in this demo. Its design, operating pressure, protective systems and approved servicing instructions are not provided. This conceptual note is not an instruction to adjust pressure, dismantle equipment or bypass protection. It cannot establish whether the compressor is safe to use.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "ask-scope",
+      "title": "What Ask SENTINEL can answer",
+      "text": "Ask SENTINEL explains information from the project guide and fictional demo learning notes in English, with citations and supporting quotes. Recent exchanges provide short follow-up context. Use the speaker button beside an answer to generate and hear that answer through Gnani Timbre. The first click sends the answer for speech generation; replay uses the browser clip. Pause with the speaker button or audio controls. Switching views pauses playback. Starting a new conversation, refreshing or signing out clears the clips. The speaker does not translate the answer, diagnose faults or certify safety. Model-specific repair explanations require suitable, applicable documents enabled by the owner and selected in the machine reference scope. Document authenticity is not independently verified. For voice questions, upload an audio file or record with your microphone, then explicitly click Transcribe question to send the recording to Gnani Prisma. Review what Gnani heard, use it in the question box, correct the text if needed, then click Ask SENTINEL. Transcription does not automatically ask the chatbot or create a maintenance report. The speaking language selection is a hint, not translation. Audio and question drafts stay in browser memory and clear after a successful question, a new conversation, refresh or sign-out. Picture upload and camera capture for chat are planned for a later version. Fictional demo reporting guides can explain what observations to document and how to route a reviewed report to the owner and technician. They do not provide machine-specific diagnoses, operating limits or repair procedures.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "demo-motor-reporting",
+      "title": "Demo reporting guide: Motor 15 noise and temperature",
+      "text": "This is a fictional demo reporting guide for Motor 15, not a manufacturer repair manual. For a report of unusual noise and a temperature such as 70 degrees Celsius, the demo next step is to document the observation for owner and technician review, not to select a repair from the symptom alone. Record the machine identity, what the noise sounds like, when it started, whether it is continuous or intermittent, and any reading already available with its unit, measurement location and time. If a detail is unknown, leave it unknown; this guide does not ask the worker to approach, touch, test or operate the machine to obtain it. A value of 70 degrees Celsius alone cannot establish whether Motor 15 is within its limits, because its manufacturer limits, measurement method and operating conditions are not supplied. A worker or owner can submit and verify the report in Worker reporting; the owner can assign the reviewed report work to a technician. Ask SENTINEL only explains this workflow and does not submit a report, alert the owner or assign a technician from a chat message. The responsible technician needs the exact machine identity, suitable approved documentation and site procedures to decide checks or repairs. This guide cannot determine the cause, authorize continued operation, specify a shutdown procedure or approve a restart.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "demo-pump-reporting",
+      "title": "Demo reporting guide: Pump 7 observations and negation",
+      "text": "This is a fictional demo reporting guide for Pump 7, not an approved pump maintenance procedure. Preserve the difference between a report that the pump is leaking and one that it is not leaking; do not turn an absent symptom into a fault. Document the reported issue, when it started, any visible location already observed, and any existing temperature or other reading with its unit and time. Leave unavailable details unknown rather than approaching, touching, testing or operating the pump to fill in the report. Pump type, fluid and approved operating limits are not supplied, so the wording alone cannot establish the cause, a repair or whether the pump may keep running. A worker or owner can save and verify the observation in Worker reporting, and the owner can assign reviewed report work to a technician. Asking in chat does not create that report or notify anyone. The responsible technician must use the exact equipment documentation and site procedures for checks and repairs; this note gives no instructions to open the pump or pipework.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "demo-compressor-reporting",
+      "title": "Demo reporting guide: Compressor 3 observations",
+      "text": "This is a fictional demo reporting guide for Compressor 3, not a pressure-system servicing procedure. Document the reported symptom, when it started, and any existing displayed readings or messages with units and time, without adjusting settings or approaching the equipment to obtain more details. Leave unknown observations blank. The compressor design, pressure limits and protective systems are not supplied, so the chatbot cannot decide whether a reading is acceptable, diagnose the fault or recommend a pressure setting. A worker or owner can save and verify a report in Worker reporting; the owner can assign reviewed work to a technician. Chat does not submit the report, raise REDLINE or dispatch help. The responsible technician needs the correct equipment documentation and site procedures before deciding checks or repairs. This guide gives no instructions to release pressure, dismantle equipment or bypass protection.",
+      "kind": "demo_learning_note",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    },
+    {
+      "id": "machine-directory",
+      "title": "Manage the factory machine directory",
+      "text": "The owner uses Machines to create or edit a machine code, name, department, optional manufacturer and model, and an optional last service date. Codes are unique within the factory and saved in uppercase. Enter a reason for each change; versioned change history preserves earlier directory details and the actor. Existing report transcripts and reviewed facts remain unchanged, while machine labels and department groupings elsewhere use current directory details. Inactive machines remain in history and analytics but are excluded from new worker assignments, new report links and equipment-name suggestions. Existing worker assignments remain visible and can be removed; use Worker machines to manage them. Inactive is a directory status, not a physical shutdown, safety decision, alert or cancellation of work. A service date is an owner-entered record and does not certify a successful repair or safe operation. Refresh selectors after directory changes and reload saved details after a version conflict. Ask SENTINEL cannot access live directory records, infer a machine model from its name, make these changes or supply a machine-specific repair procedure without suitable references.",
+      "kind": "project_guide",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "id": "machine-references",
+      "title": "Use machine-linked reference documents",
+      "text": "The owner uses Reference documents to add plain text or load a UTF-8 text file for a chosen machine, with a document title, version and source type. New versions are saved for review and are not used in chat until the owner reviews the full text, confirms machine/model applicability and enables that version. Text is immutable after saving; attach a new document version to change it and withdraw superseded or conflicting versions. Owner-supplied references are not independently authenticated or automatically factory-approved; their machine manufacturer and exact model must be recorded before enabling. Fictional references remain explicitly labelled fictional. Up to two versions can be enabled for a machine. In Ask SENTINEL, refresh available reference machines, choose the intended machine scope, then ask; changing scope clears the conversation. Workers can select their currently assigned active machines, technicians machines in their latest assigned work, and owners active factory machines. Only enabled texts whose stored manufacturer and model still match the selected machine are attached. Chat cannot fetch external PDFs, inspect photos, access live report records, authenticate a manual or infer missing repair steps. The owner may upload a text-based PDF to the local backend for a temporary text preview, compare it with the original and explicitly copy it into the draft before saving. PDF preview calls no AI and creates no document. It accepts up to 5 MiB, 20 pages and 8,000 extracted characters, with no silent truncation. Encrypted files and any page without extractable text are rejected. Images, diagrams, table relationships, symbols and reading order are not verified, and no OCR runs. The original PDF is not retained; saved text can contain editable input-page markers. Withdrawal, changed machine details or changed access may require a new conversation and prevents generation of new read-back audio from an old receipt; previously displayed text and cached audio cannot be recalled. A sourced explanation is not a machine safety decision or permission to perform work.",
+      "kind": "project_guide",
+      "roles": [
+        "owner",
+        "worker",
+        "technician"
+      ]
+    }
+  ]
+}

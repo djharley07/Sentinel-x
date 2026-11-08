@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from psycopg.rows import dict_row
 
 from app.database import get_connection, get_demo_organization_id
+from app.identity import principal
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["Report history"])
@@ -44,10 +45,12 @@ def list_reports(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
+    user = principal()
+    owner_filter = user.account_id if user.role == "worker" else None
     with history_cursor() as (cursor, organization_id):
         cursor.execute(
-            "SELECT count(*) AS total FROM sentinel.reports WHERE organization_id = %s",
-            (organization_id,),
+            "SELECT count(*) AS total FROM sentinel.reports WHERE organization_id = %s AND (%s::uuid IS NULL OR created_by_account_id=%s)",
+            (organization_id, owner_filter, owner_filter),
         )
         total = cursor.fetchone()["total"]
         cursor.execute(
@@ -57,7 +60,7 @@ def list_reports(
                 r.created_at,
                 a.id AS latest_attempt_id,
                 a.attempt_number AS latest_attempt_number,
-                a.original_transcript AS latest_original_transcript,
+                COALESCE(v.corrected_transcript,a.original_transcript) AS latest_original_transcript,
                 a.detected_language_code,
                 COALESCE(v.decision, 'pending') AS verification_status
             FROM sentinel.reports AS r
@@ -70,11 +73,11 @@ def list_reports(
             ) AS a ON true
             LEFT JOIN sentinel.transcription_reviews AS v
                 ON v.attempt_id = a.id AND v.organization_id = r.organization_id
-            WHERE r.organization_id = %s
+            WHERE r.organization_id = %s AND (%s::uuid IS NULL OR r.created_by_account_id=%s)
             ORDER BY r.created_at DESC, r.id DESC
             LIMIT %s OFFSET %s
             """,
-            (organization_id, limit, offset),
+            (organization_id, owner_filter, owner_filter, limit, offset),
         )
         reports = cursor.fetchall()
     return {
@@ -103,6 +106,10 @@ def get_report(report_id: UUID):
                 a.id AS attempt_id,
                 a.attempt_number,
                 a.created_at,
+                c.source_attempt_id AS correction_of,
+                c.reason AS correction_reason,
+                actor.display_name AS corrected_by,
+                c.created_at AS correction_created_at,
                 a.original_transcript,
                 a.model,
                 a.detected_language_code,
@@ -121,6 +128,9 @@ def get_report(report_id: UUID):
             FROM sentinel.transcription_attempts AS a
             LEFT JOIN sentinel.transcription_reviews AS v
                 ON v.attempt_id = a.id AND v.organization_id = a.organization_id
+            LEFT JOIN sentinel.transcript_corrections c
+                ON c.new_attempt_id=a.id AND c.organization_id=a.organization_id
+            LEFT JOIN sentinel.accounts actor ON actor.id=c.actor_id AND actor.organization_id=c.organization_id
             WHERE a.report_id = %s AND a.organization_id = %s
             ORDER BY a.attempt_number ASC
             """,

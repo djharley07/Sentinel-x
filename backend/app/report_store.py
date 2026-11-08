@@ -3,6 +3,8 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from app.database import get_connection, get_demo_organization_id
+from app.identity import principal
+from app.access import require_owned
 
 ROOT = Path(__file__).resolve().parents[2]
 RECORDINGS_DIR = ROOT / "demo-assets" / "local" / "recordings"
@@ -23,6 +25,8 @@ def _replacement_target(connection, organization_id, previous_attempt_id):
     ).fetchone()
     if previous is None:
         raise ReplacementError(404, "Previous attempt not found.")
+
+    require_owned(connection, 'report', previous[0])
 
     # All replacement writers lock the same report before checking its latest attempt.
     report = connection.execute(
@@ -113,10 +117,10 @@ def save_transcription(
         if replaces_attempt_id is None:
             connection.execute(
                 """
-                INSERT INTO sentinel.reports (id, organization_id)
-                VALUES (%s, %s)
+                INSERT INTO sentinel.reports (id, organization_id, created_by_account_id)
+                VALUES (%s, %s, %s)
                 """,
-                (report_id, organization_id),
+                (report_id, organization_id, principal().account_id),
             )
 
         connection.execute(
@@ -153,3 +157,46 @@ def save_transcription(
         "attempt_id": str(attempt_id),
         "attempt_number": attempt_number,
     }
+
+def save_typed_report(text: str, request_id: UUID, replaces_attempt_id: UUID | None = None):
+    """Save an explicitly typed draft, with retry identity and the existing review flow."""
+    user = principal()
+    organization_id = get_demo_organization_id()
+    with get_connection() as connection:
+        _require_demo(connection, organization_id)
+        # Serialize retries before checking the attempt UUID, including concurrent requests.
+        connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (str(request_id),))
+        previous = connection.execute(
+            """SELECT a.report_id, a.attempt_number, a.original_transcript, a.model,
+                      r.created_by_account_id, a.audio_storage_key
+               FROM sentinel.transcription_attempts a JOIN sentinel.reports r ON r.id=a.report_id
+               WHERE a.id=%s AND a.organization_id=%s""", (request_id, organization_id),
+        ).fetchone()
+        if previous:
+            if previous[2] != text or previous[3] != 'manual-text' or previous[5] != f'typed:{user.account_id}:{request_id}':
+                raise ReplacementError(409, "This submission ID was already used for a different report.")
+            if replaces_attempt_id is not None:
+                source = connection.execute(
+                    "SELECT report_id, attempt_number FROM sentinel.transcription_attempts WHERE id=%s AND organization_id=%s",
+                    (replaces_attempt_id, organization_id),
+                ).fetchone()
+                if source is None or source[0] != previous[0] or source[1] + 1 != previous[1]:
+                    raise ReplacementError(409, "This submission ID belongs to a different replacement.")
+            elif previous[1] != 1:
+                raise ReplacementError(409, "This submission ID belongs to a replacement.")
+            return {"report_id": str(previous[0]), "attempt_id": str(request_id), "attempt_number": previous[1]}
+        report_id, attempt_number = uuid4(), 1
+        if replaces_attempt_id is not None:
+            report_id, attempt_number = _replacement_target(connection, organization_id, replaces_attempt_id)
+        else:
+            connection.execute(
+                "INSERT INTO sentinel.reports(id, organization_id, created_by_account_id) VALUES(%s,%s,%s)",
+                (report_id, organization_id, user.account_id),
+            )
+        connection.execute(
+            """INSERT INTO sentinel.transcription_attempts
+               (id, organization_id, report_id, attempt_number, original_transcript, model, audio_storage_key)
+               VALUES(%s,%s,%s,%s,%s,'manual-text',%s)""",
+            (request_id, organization_id, report_id, attempt_number, text, f"typed:{user.account_id}:{request_id}"),
+        )
+    return {"report_id": str(report_id), "attempt_id": str(request_id), "attempt_number": attempt_number}

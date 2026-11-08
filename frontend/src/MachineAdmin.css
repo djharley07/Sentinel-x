@@ -1,0 +1,15 @@
+.machine-admin { max-width:1100px;margin:auto; }
+.machine-admin-toolbar { display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:18px 0; }
+.machine-admin-toolbar > * { flex:1 1 180px;min-width:0; }
+.machine-admin-toolbar button { margin:0; }
+.machine-admin label { display:block; }
+.machine-admin select,.machine-admin input:not([type=checkbox]),.machine-admin textarea { display:block;width:100%;box-sizing:border-box;margin:8px 0 16px; }
+.machine-admin-fields { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:0 18px; }
+.machine-admin fieldset { padding:0;border:0;min-width:0; }
+.machine-admin .machine-admin-check { display:flex;align-items:center;gap:10px; }
+.machine-admin-check input { width:20px;height:20px;margin:0;flex:0 0 20px; }
+.machine-admin-table { overflow-x:auto;margin:14px 0; }
+.machine-admin table { border-collapse:collapse;width:100%;text-align:left; }
+.machine-admin th,.machine-admin td { border-bottom:1px solid #44546a;padding:12px;vertical-align:top;overflow-wrap:anywhere; }
+.machine-admin td button { width:auto;min-width:100px;margin:0; }
+.machine-admin-event { padding:16px 0;border-top:1px solid #44546a; }

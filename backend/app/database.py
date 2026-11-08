@@ -27,6 +27,10 @@ def read_database_settings():
 
 
 def get_demo_organization_id():
+    from app.identity import current_identity
+    user = current_identity.get()
+    if user is not None:
+        return user.organization_id
     settings = read_database_settings()
     return UUID(settings["DEMO_ORGANIZATION_ID"])
 
@@ -34,6 +38,9 @@ def get_demo_organization_id():
 def get_connection():
     settings = read_database_settings()
 
+    from app.identity import current_identity
+    user = current_identity.get()
+    actor_option = f" -c sentinel.account_id={user.account_id}" if user else ""
     return psycopg.connect(
         host=settings["DB_HOST"],
         port=settings["DB_PORT"],
@@ -42,5 +49,5 @@ def get_connection():
         password=settings["DB_PASSWORD"],
         sslmode="require",
         connect_timeout=15,
-        options="-c statement_timeout=10000",
+        options="-c statement_timeout=10000" + actor_option,
     )

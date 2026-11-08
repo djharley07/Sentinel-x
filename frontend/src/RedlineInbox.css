@@ -1,0 +1,26 @@
+.owner-redline-banner { display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center;border:1px solid #5d6c82;border-radius:10px;padding:18px;margin:18px 0;background:#152131; }
+.owner-redline-banner > div:first-child { flex:1 1 420px;min-width:0; }
+.owner-redline-banner strong { font-size:1.15rem; }
+.owner-redline-banner p { margin:8px 0 0; }
+.owner-redline-active { border:2px solid #ff8292;background:#601d2b;color:#fff; }
+.owner-redline-active p,.owner-redline-active .hint { color:#fff0f2; }
+.owner-redline-unknown { border-color:#f7c76d;background:#382d1b; }
+.redline-refresh-error,.redline-version-warning { color:#ffe7a9; }
+.redline-inbox { max-width:1150px;margin:auto; }
+.redline-inbox-actions { display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:14px 0; }
+.redline-inbox-actions button { width:auto;min-width:150px;margin:0; }
+.redline-inbox-actions select { display:block;max-width:100%;margin-top:8px;padding:10px;color:#e8edf5;background:#0b121c;border:1px solid #64748b;border-radius:6px;font:inherit; }
+.redline-inbox-table { overflow:auto; }
+.redline-inbox table { border-collapse:collapse;width:100%;text-align:left; }
+.redline-inbox td,.redline-inbox th { padding:12px;border-bottom:1px solid #44546a;vertical-align:top; }
+.redline-inbox td p { margin:6px 0; }
+.redline-inbox td button { min-width:140px;margin:0; }
+.redline-case-status { display:block;min-width:130px;padding:8px;border-radius:6px; }
+.redline-case-open,.redline-case-acknowledged { background:#601d2b;color:#fff; }
+.redline-case-resolved { background:#28394e;color:#e6edf7; }
+.redline-inbox-detail { border:1px solid #f28b98;border-radius:10px;padding:18px;margin-top:24px;overflow-wrap:anywhere; }
+.redline-inbox-detail dl > div { display:grid;grid-template-columns:minmax(100px,1fr) 2fr;gap:14px;padding:8px 0; }
+.redline-inbox-detail dd { margin:0; }
+.redline-source-text { white-space:pre-wrap;overflow-wrap:anywhere; }
+.redline-report-version { border-top:1px solid #44546a;margin-top:14px;padding-top:10px; }
+@media(max-width:600px){.redline-inbox-actions{align-items:stretch}.redline-inbox-actions button,.redline-inbox-actions label{width:100%}.redline-inbox-actions select{width:100%}.redline-inbox-detail{padding:12px}}

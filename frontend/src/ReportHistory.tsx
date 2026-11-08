@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import TranscriptCorrection from './TranscriptCorrection'
+import ReportReadback from './ReportReadback'
+import { apiFetch } from './api'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import './ReportHistory.css'
+import SavedExtraction from './SavedExtraction'
 
 type Status = 'pending' | 'accepted' | 'corrected' | 'rerecord_requested'
 type Summary = {
@@ -25,6 +29,10 @@ type Attempt = {
   corrected_transcript: string | null
   verified_transcript: string | null
   reviewed_at: string | null
+  correction_of?:string|null
+  correction_reason?:string|null
+  corrected_by?:string|null
+  correction_created_at?:string|null
 }
 type Report = { report_id: string; created_at: string; attempts: Attempt[] }
 const PAGE_SIZE = 10
@@ -80,12 +88,18 @@ function message(data: unknown, code: number) {
 function when(value: string) { return new Date(value).toLocaleString() }
 
 type Props = {
+  detailOnly?: boolean
+  openRequest?: { id: string } | null
+  active?: boolean
   onResume: (reportId: string, attemptId: string) => Promise<void>
   resumeDisabled: boolean
   resuming: boolean
 }
 
-export default function ReportHistory({ onResume, resumeDisabled, resuming }: Props) {
+export default function ReportHistory({ onResume, resumeDisabled, resuming, active = true, openRequest, detailOnly = false }: Props) {
+  const headingId=useId()
+  const heading=useRef<HTMLHeadingElement|null>(null)
+  useEffect(()=>{if(detailOnly&&active){heading.current?.focus();heading.current?.scrollIntoView({block:'start'})}},[detailOnly,active,openRequest])
   const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -116,7 +130,7 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`/api/reports?limit=${PAGE_SIZE}&offset=${offset}`, { signal: request.signal, cache: 'no-store' })
+      const response = await apiFetch(`/api/reports?limit=${PAGE_SIZE}&offset=${offset}`, { signal: request.signal, cache: 'no-store' })
       const data: unknown = await response.json()
       if (!response.ok) throw new Error(message(data, response.status))
       if (!isPage(data, offset)) throw new Error('The server returned an unexpected history response.')
@@ -131,7 +145,7 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
     }
   }
 
-  async function openReport(reportId: string) {
+  const openReport = useCallback(async (reportId: string) => {
     detailRequest.current?.abort()
     const request = new AbortController()
     detailRequest.current = request
@@ -141,7 +155,7 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
     setDetailLoading(true)
     setDetailError('')
     try {
-      const response = await fetch(`/api/reports/${reportId}`, { signal: request.signal, cache: 'no-store' })
+      const response = await apiFetch(`/api/reports/${reportId}`, { signal: request.signal, cache: 'no-store' })
       const data: unknown = await response.json()
       if (!response.ok) throw new Error(message(data, response.status))
       if (!isHistoryReport(data, reportId)) throw new Error('The server returned an unexpected report response.')
@@ -154,25 +168,63 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
       window.clearTimeout(timer)
       if (detailRequest.current === request) setDetailLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    if (openRequest) void openReport(openRequest.id)
+  }, [openRequest, openReport])
+
+  function renderAttempt(attempt:Attempt,index:number,report:Report){
+    return (<article className={`history-attempt ${index === report.attempts.length - 1 ? 'history-latest-attempt' : ''}`} key={attempt.attempt_id}>
+                <h4>{attempt.correction_of?'Corrected version':attempt.model === 'manual-text' ? 'Typed report version' : 'Recording attempt'} {attempt.attempt_number}{index === report.attempts.length - 1 ? ' · Latest' : ''}</h4>
+                {attempt.correction_of&&<><p className="hint">Text corrected by {attempt.corrected_by??'an account'} · {when(attempt.correction_created_at??attempt.created_at)}. Reuses the earlier recording; no new transcription.</p><p>Reason: {attempt.correction_reason}</p><p className="hint">Correction of version {report.attempts.find(a=>a.attempt_id===attempt.correction_of)?.attempt_number??attempt.correction_of}. Earlier facts and work stay with their source version.</p></>}
+                <span className="history-status">{labels[attempt.verification_status]}</span>
+                <p className="hint">Version saved {when(attempt.created_at)} · {attempt.detected_language_code ?? 'Language not returned'}</p>
+                <div className={index === report.attempts.length - 1 ? 'current-transcript' : 'archived-transcript'}>
+                  <h5>{attempt.verified_transcript !== null ? (attempt.decision === 'corrected'||attempt.correction_of ? (index === report.attempts.length - 1 ? 'Current corrected transcript' : 'Corrected transcript · Earlier version') : 'Accepted transcript') : 'Latest text · Not verified'}</h5>
+                  <p className="history-text"><strong>{attempt.verified_transcript ?? attempt.original_transcript}</strong></p>
+                </div>
+                {attempt.verified_transcript !== null && attempt.verified_transcript !== attempt.original_transcript && <div className="transcript-original">
+                  <h5>{attempt.model === 'manual-text' ? 'Original typed text · Before correction' : 'Original transcript · Before correction'}</h5>
+                  <p className="history-text">{attempt.original_transcript}</p>
+                </div>}
+                {attempt.correction_of && <p className="hint">For the text before this saved correction, expand Version history below.</p>}
+                {attempt.verified_transcript === null && <p className="hint">{attempt.decision === 'rerecord_requested' ? 'A replacement was requested. This version is not verified.' : 'This latest version is awaiting review. Earlier accepted text is available in Version history.'}</p>}
+                {index === report.attempts.length - 1 && attempt.verification_status === 'pending' && <>
+                  <button disabled={resumeDisabled || loading || detailLoading}
+                    onClick={() => onResume(report.report_id, attempt.attempt_id)}>
+                    {resuming ? 'Opening review…' : 'Resume review'}
+                  </button>
+                  {resumeDisabled && !resuming && <p className="hint">Resume is available when the recording workspace is empty. Finish the active report or clear a selected recording first.</p>}
+                </>}
+                {index === report.attempts.length - 1 && attempt.verified_transcript !== null &&
+                  <ReportReadback key={`readback:${attempt.attempt_id}`} attemptId={attempt.attempt_id} active={active} />}
+                {index === report.attempts.length - 1 && attempt.verified_transcript !== null &&
+                  <TranscriptCorrection key={`correction:${attempt.attempt_id}`} attemptId={attempt.attempt_id} text={attempt.verified_transcript} active={active} onSaved={()=>{void openReport(report.report_id)}}/>}
+                {index === report.attempts.length - 1 && attempt.verified_transcript !== null &&
+                  <SavedExtraction key={attempt.attempt_id} attemptId={attempt.attempt_id} transcript={attempt.verified_transcript} />}
+                {attempt.reviewed_at && <p className="hint">Reviewed {when(attempt.reviewed_at)}</p>}
+              </article>
+    )
   }
 
   return (
-    <section className="history card" aria-labelledby="history-heading">
+    <section className="history card" aria-labelledby={headingId}>
       <div className="history-heading">
-        <div><p className="eyebrow">03 / SAVED REPORTS</p><h2 id="history-heading">Report history</h2></div>
-        <button className="secondary" disabled={loading} onClick={() => loadPage(0)}>
+        <div><p className="eyebrow">03 / SAVED REPORTS</p><h2 id={headingId} ref={heading} tabIndex={-1}>{detailOnly?'Report and work log':'Report history'}</h2></div>
+        {!detailOnly && <button className="secondary" disabled={loading} onClick={() => loadPage(0)}>
           {loading ? 'Loading…' : page ? 'Refresh reports' : 'Load saved reports'}
-        </button>
+        </button>}
       </div>
-      <p className="hint">Saved history for this demo factory. Resume the latest pending attempt to review it. Loading reports does not send audio to Gnani. Refresh the list after saving new work.</p>
+      {!detailOnly && <p className="hint">Saved history for this demo factory. Resume the latest pending attempt to review it. Loading reports does not send audio to Gnani. Refresh the list after saving new work.</p>}
       {loading && <p role="status">Loading saved reports…</p>}
       {error && <p className="error" role="alert">{error} {page && 'The list below is from the previous successful load.'}</p>}
-      {page && <>
-        <p className="hint">{page.total === 0 ? 'No saved reports yet.' : page.reports.length === 0
+      {(page || selectedId) && <>
+        {!detailOnly && page && <p className="hint">{page.total === 0 ? 'No saved reports yet.' : page.reports.length === 0
           ? 'No reports on this page. Refresh reports to return to the beginning.'
-          : `Showing ${page.offset + 1}–${page.offset + page.reports.length} of ${page.total} reports`}</p>
-        <div className="history-layout">
-          <div>
+          : `Showing ${page.offset + 1}–${page.offset + page.reports.length} of ${page.total} reports`}</p>}
+        <div className={!detailOnly && page ? "history-layout" : undefined}>
+          {!detailOnly && page && <div>
             <ul className="history-list" aria-label="Saved reports">
               {page.reports.map((item) => <li key={item.report_id}>
                 <button className="history-report" disabled={loading} aria-pressed={selectedId === item.report_id}
@@ -188,7 +240,7 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
               <button className="secondary" disabled={loading || page.offset === 0} onClick={() => loadPage(Math.max(0, page.offset - PAGE_SIZE))}>Previous</button>
               <button className="secondary" disabled={loading || !page.has_more} onClick={() => loadPage(page.offset + PAGE_SIZE)}>Next</button>
             </div>
-          </div>
+          </div>}
           <div className="history-detail" aria-busy={detailLoading}>
             {!selectedId && <p>Select a report to view its attempts and reviews.</p>}
             {detailLoading && <p role="status">Loading report history…</p>}
@@ -201,25 +253,15 @@ export default function ReportHistory({ onResume, resumeDisabled, resuming }: Pr
               <p className="hint history-id">{report.report_id}</p>
               <p className="hint">Created {when(report.created_at)} · Times shown in your local time</p>
               {report.attempts.length === 0 && <p>No recording attempts found.</p>}
-              {report.attempts.map((attempt, index) => <article className="history-attempt" key={attempt.attempt_id}>
-                <h4>Attempt {attempt.attempt_number}{index === report.attempts.length - 1 ? ' · Latest' : ''}</h4>
-                <span className="history-status">{labels[attempt.verification_status]}</span>
-                <p className="hint">Recorded {when(attempt.created_at)} · {attempt.detected_language_code ?? 'Language not returned'}</p>
-                <h5>Original transcript</h5>
-                <p className="history-text">{attempt.original_transcript}</p>
-                {attempt.verified_transcript !== null ? <>
-                  <h5>{attempt.decision === 'corrected' ? 'Corrected transcript' : 'Accepted transcript'}</h5>
-                  <p className="history-text">{attempt.verified_transcript}</p>
-                </> : <p className="hint">{attempt.decision === 'rerecord_requested' ? 'A new recording was requested. This attempt was not verified.' : 'This attempt is awaiting review.'}</p>}
-                {index === report.attempts.length - 1 && attempt.verification_status === 'pending' && <>
-                  <button disabled={resumeDisabled || loading || detailLoading}
-                    onClick={() => onResume(report.report_id, attempt.attempt_id)}>
-                    {resuming ? 'Opening review…' : 'Resume review'}
-                  </button>
-                  {resumeDisabled && !resuming && <p className="hint">Resume is available when the recording workspace is empty. Finish the active report or clear a selected recording first.</p>}
-                </>}
-                {attempt.reviewed_at && <p className="hint">Reviewed {when(attempt.reviewed_at)}</p>}
-              </article>)}
+              {report.attempts.length > 0 && renderAttempt(report.attempts[report.attempts.length - 1]!, report.attempts.length - 1, report)}
+              {report.attempts.length > 1 && <details className="transcript-versions" key={`versions:${report.report_id}:${report.attempts.length}`}>
+                <summary>Version history · {report.attempts.length - 1} earlier {report.attempts.length === 2 ? 'version' : 'versions'}</summary>
+                <p className="hint">Earlier text is preserved below, newest first. Facts and work records remain associated with their source version.</p>
+                {report.attempts.slice(0,-1).map((attempt,index)=>({attempt,index})).reverse().map(({attempt,index})=><details className="transcript-archived-version" key={attempt.attempt_id}>
+                  <summary>Version {attempt.attempt_number} · {labels[attempt.verification_status]} · {when(attempt.created_at)}</summary>
+                  {renderAttempt(attempt,index,report)}
+                </details>)}
+              </details>}
             </>}
           </div>
         </div>

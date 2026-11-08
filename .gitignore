@@ -1,22 +1,27 @@
-# Secrets and local configuration
+# Secrets and generated files
 .env
 .env.*
 !.env.example
-
-# Python
 .venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-
-# Frontend dependencies and build output
 node_modules/
 dist/
-
-# Local test uploads and generated results
-demo-assets/local/
-test-results/
-playwright-report/
-
-# Logs
+__pycache__/
+*.pyc
 *.log
+
+# Local editor settings
+/.vscode/
+
+# Old installers, update packages and backups
+/*-update/
+/sentinel-*/
+/Sharable/
+/account-update/
+/update-backups/
+/*-install-plan.json
+/install-plan.json
+/apply_*.py
+/backend/app/speech.before-languages.txt
+
+# Local archives
+/*.zip

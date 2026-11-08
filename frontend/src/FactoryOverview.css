@@ -1,0 +1,11 @@
+.factory-overview { margin: 24px 0; }
+.factory-overview h3 { margin-top: 26px; }
+.overview-counts { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:18px 0; }
+.overview-counts > div { border:1px solid #42566e;border-radius:10px;padding:16px;display:grid;gap:8px; }
+.overview-counts strong { font-size:1.8rem;color:#55dfbc; }
+.overview-counts span { font-size:.9rem; }
+.overview-case { border-top:1px solid #42566e;padding:10px 0;overflow-wrap:anywhere; }
+.overview-table { overflow-x:auto; }
+.overview-table table { width:100%;border-collapse:collapse;text-align:left; }
+.overview-table th,.overview-table td { padding:12px;border-bottom:1px solid #42566e; }
+.overview-actions { display:flex;gap:12px;flex-wrap:wrap; }

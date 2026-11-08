@@ -4,3 +4,4 @@ fastapi
 uvicorn
 python-multipart
 psycopg[binary]
+Pillow

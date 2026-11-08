@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.database import get_connection, get_demo_organization_id
+from app.equipment_check import require_latest, equipment_warnings, available_machines
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/attempts", tags=["Transcript reviews"])
@@ -17,6 +18,7 @@ class ReviewRequest(BaseModel):
 
     decision: Literal["accepted", "corrected", "rerecord_requested"]
     corrected_transcript: str | None = Field(default=None, max_length=20000)
+    equipment_check_acknowledged: bool = False
 
 
 @router.post("/{attempt_id}/review")
@@ -56,6 +58,8 @@ def review_transcript(attempt_id: UUID, review: ReviewRequest):
                     detail="A valid demo organization is required.",
                 )
 
+            # All version writers lock the report before the attempt.
+            require_latest(connection, attempt_id, lock=True)
             # Serialize review requests for this attempt.
             attempt = connection.execute(
                 """
@@ -94,6 +98,10 @@ def review_transcript(attempt_id: UUID, review: ReviewRequest):
                     )
                 review_id = existing[0]
             else:
+                if review.decision != 'rerecord_requested':
+                    check_text = corrected if review.decision == 'corrected' else attempt[1]
+                    if equipment_warnings(check_text, available_machines(connection)) and not review.equipment_check_acknowledged:
+                        raise HTTPException(422, 'Check the possible equipment-name mismatch before saving.')
                 inserted = connection.execute(
                     """
                     INSERT INTO sentinel.transcription_reviews (

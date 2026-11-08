@@ -1,3 +1,5 @@
+from app.language_options import SpeakingMode, request_options
+# SENTINEL_LANGUAGE_OPTIONS_V1
 from time import perf_counter
 from typing import Annotated
 from uuid import UUID
@@ -35,6 +37,7 @@ AUDIO_TYPES = {
 def transcribe_audio(
     audio: UploadFile,
     replaces_attempt_id: Annotated[UUID | None, Form()] = None,
+    speaking_mode: Annotated[SpeakingMode, Form()] = 'auto',
 ):
     """Transcribe a short recording. The result still needs user review."""
     extension = Path(audio.filename or "").suffix.lower()
@@ -87,7 +90,7 @@ def transcribe_audio(
             },
             data={
                 "model": "prisma-v3.0",
-                "language_code": "indic-auto",
+                **request_options(speaking_mode),
             },
             timeout=(10, 60),
             allow_redirects=False,
@@ -190,4 +193,33 @@ def transcribe_audio(
         "request_id": request_id,
         "verification_status": "pending",
         "persistence_status": "saved",
+    }
+
+from pydantic import BaseModel, ConfigDict, Field
+from app.report_store import save_typed_report
+
+
+class TypedReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=20000)
+    request_id: UUID
+    replaces_attempt_id: UUID | None = None
+
+
+@router.post("/typed")
+def submit_typed_report(body: TypedReport):
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(422, "Enter your report before saving.")
+    try:
+        saved = save_typed_report(text, body.request_id, body.replaces_attempt_id)
+    except ReplacementError as error:
+        raise HTTPException(error.status_code, error.detail) from None
+    except (psycopg.Error, OSError, RuntimeError, ValueError) as error:
+        logger.error("Typed report persistence failed: %s", type(error).__name__)
+        raise HTTPException(503, "Could not confirm saving. Retry the same typed submission.") from None
+    return {
+        **saved, "transcript": text, "model": "manual-text",
+        "detected_language_code": None, "request_id": None,
+        "verification_status": "pending", "persistence_status": "saved",
     }
